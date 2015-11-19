@@ -8,6 +8,8 @@ function [samples, messages] = ReadSmiSamples(filename,sampleFormat,messageForma
 
 if ~exist('sampleFormat','var') || isempty(sampleFormat)
     sampleFormat = '%f %*s %d %f %f %f %f %f %f %f %f %*f %f %*f';
+%   samples = struct('tSample',sampleMat(:,1), 'trial',sampleMat(:,2), 'sampleRaw',sampleMat(:,3:4), 'PD',sampleMat(:,5:6), 'CR',sampleMat(:,7:8), 'POR',sampleMat(:,9:10), 'pupilConf',sampleMat(:,11));
+
 end
 if ~exist('messageFormat','var') || isempty(messageFormat)
     messageFormat = '%f %*s %d %*s %*s %s';
@@ -32,11 +34,11 @@ found_start_code = false;
 iSample = 1;
 iMessage = 1;
 sampleMat = [];
-messageMat = [];
-% messageMat = cell(0,2);
+% messageMat = [];
+messageMat = cell(0,3);
 
 while ftell(fid) < eof % if we haven't reached the end of the text file
-    str = fgetl(fid); % read in next line of text file
+    str = fgetl(fid); % read in next line of text file    
     % Check for start code
     if ~found_start_code 
         if isempty(strfind(str,start_code)) % if we haven't found start code yet
@@ -45,6 +47,8 @@ while ftell(fid) < eof % if we haven't reached the end of the text file
             found_start_code = true;
         end
     end        
+    % skip commented lines
+    if strncmp(str,'##',2), continue; end
     % Otherwise, Read in line
     if strfind(str,sampleKeyword) % check for the code-word indicating a message was written
         sampleMat(iSample,:) =  sscanf(str,sampleFormat);
