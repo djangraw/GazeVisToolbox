@@ -1,14 +1,10 @@
-function h = MakeEyeMovie_simple(samples,pupilsize,time,screen_res,events)
+function h = MakeEyeMovie_simple(samples,pupilsize,times,screen_res,events,timeplot,timeplotlabel)
 % Makes a figure/UI for scrolling through eye position data like a movie.
 %
-% MakeEyeMovie_simple(samples,pupilsize,t,screen_res,events)
+% MakeEyeMovie_simple(samples,pupilsize,t,screen_res,events,timeplot,timeplotlabel)
 %
 % The dot represents the subject's eye position.  The dot's size represents
 % the reported pupil size.  The big rectangle is the limits of the screen.
-% Unity reports objects that are off the screen, but they aren't visible
-% to the subject until they enter this rectangle.  The smaller rectangles
-% represent the screen bounds of objects in the scene, as reported by a
-% Unity replay.
 %
 % Inputs:
 %   - samples is an nx2 matrix, where n is the number of samples of eye
@@ -18,7 +14,15 @@ function h = MakeEyeMovie_simple(samples,pupilsize,time,screen_res,events)
 % the subject's pupil (in unknown units).  This will be the size of the dot
 % on the screen.
 %   - t is an n-element vector of the corresponding times (in seconds).
-%   - events is an optional struct including saccade and display subfields.
+%   - events is an optional struct including saccade and display fields. In
+%   the display field, subfields should be 'time' (in same units as 'times'
+%   input),'name' (string), 'type' (optional, for grouping images in bottom
+%   timeplot), and 'image' (optional, for display below eye pos... must be
+%   image in current path, with same size as screen_res)  
+%   - timeplot is a nxr-element matrix indicating the timecourses of r
+% arbitrary variables.
+%   - timeplotlabel is an r-element cell array of strings labeling the
+% timeplot variables.
 %
 % Outputs:
 %   - h is a struct containing the handles for various items on the
@@ -36,13 +40,16 @@ function h = MakeEyeMovie_simple(samples,pupilsize,time,screen_res,events)
 % Updated 5/6/13 by DJ - added subject/session input format
 % Updated ~10/1/15 by DJ - made simple version
 % Updated 11/3/15 by DJ - debugging 
+% Updated 11/20/15 by DJ - added timeplot and timeplotlabel, more
+% intelligent event display, added ability to specify event types and
+% images for the display events.
 
 % -------- INPUTS -------- %
 if ~exist('pupilsize','var') || isempty(pupilsize)
     pupilsize=ones(1,length(samples));
 end
-if ~exist('time','var') || isempty(time)
-    time=1:length(samples);
+if ~exist('times','var') || isempty(times)
+    times=1:length(samples);
 end
 if ~exist('screen_res','var') || isempty(screen_res)
     screen_res = [1280, 1024];
@@ -56,11 +63,21 @@ end
 if ~isfield(events,'saccade')
     events.saccade = struct('time_start',zeros(0,1),'time_end',zeros(0,1),'position_start',zeros(0,2),'position_end',zeros(0,2));
 end
+if ~exist('timeplot','var') || isempty(timeplot)
+    timeplot = samples;
+    timeplotlabel = {'pos_x','pos_y'};
+end
+if ~exist('timeplotlabel','var') || isempty(timeplotlabel)
+    timeplotlabel = cell(1,size(timeplot));
+    for i=1:size(timeplot,2)
+        timeplotlabel{i} = sprintf('input %d',i);
+    end
+end
 % -------- SETUP -------- %
 % normalize inputs
 ps_reg = 50/nanmax(pupilsize); % factor we use to regularize pupil size
-t_start = time(1);
-time = time-t_start;
+t_start = times(1);
+times = times-t_start;
 
 % Get saccade info
 saccade_start_pos = events.saccade.position_start;
@@ -80,40 +97,73 @@ iTime = 1;
 h.Plot = axes('Units','normalized','Position',[0.13 0.3 0.775 0.65],'ydir','reverse'); % set position
 hold on;
 rectangle('Position',[0 0 screen_res]);
+h.Image = image(0,0,cat(3,1,0,1));
 h.Dot = plot(samples(iTime,1),samples(iTime,2),'k.','MarkerSize',pupilsize(iTime)*ps_reg);
 axis(h.Plot,[-200 screen_res(1)+200 -200 screen_res(2)+200]);
 h.Rect = [];
 h.iSac = [];
 h.Saccade = [];
 
-title(sprintf('t = %.3f s',time(iTime)));
+title(sprintf('t = %.3f s',times(iTime)));
 
 % -------- TIME SELECTION PLOT SETUP -------- %
 % 'Time plot' for selecting and observing current time
 h.Time = axes('Units','normalized','Position',[0.13 0.1 0.775 0.1],'Yticklabel',''); % set position
 hold on
-% Plot horizontal lines when objects were visible
-display_times = events.display.time-t_start;
-display_names = events.display.name;
-for i=1:numel(display_times);
-    plot([1 1]*display_times(i),[0,1],'ButtonDownFcn',@time_callback);      % color it as target/distractor and make it clickable
+% get event info
+event_times = events.display.time-t_start;
+event_names = events.display.name;
+if isfield(events.display,'type')
+    event_types = events.display.type;
+else
+    event_types = repmat({'event'},size(events.display.name));
 end
-% Plot saccade times
-plot(saccade_times,ones(size(saccade_times))*0.5,'k+','ButtonDownFcn',@time_callback);
-% Plot eye position
-normalized_samples = nan(size(samples));
-normalized_samples(:,1) = samples(:,1)/screen_res(1);
-normalized_samples(:,2) = samples(:,2)/screen_res(2);
-plot(time,normalized_samples,'g','ButtonDownFcn',@time_callback); % plot eye position
+if isfield(events.display,'image')
+    event_images = events.display.image;
+else
+    event_images = repmat({''},size(events.display.name));
+end
+event_categories = unique(event_types);
+% get colors
+nTimeplots = size(timeplot,2);
+nEventCats = numel(event_categories); 
+colors = distinguishable_colors(nTimeplots + nEventCats, {'w','k'});
+% plot timeplots
+for i=1:nTimeplots
+    h.Timeplot{i} = plot(h.Time,times,timeplot(:,i),'ButtonDownFcn',@time_callback);
+end
+% Make event lines
+hEventsCell = cell(nEventCats,1);
+% plot colors for legend
+for i=1:nEventCats
+    plot(-1,-1,'color',colors(i+nTimeplots,:));
+end
+% plot events for real
+for i=1:nEventCats
+    hEventsCell{i} = PlotVerticalLines(event_times(strcmp(event_types,event_categories{i})),colors(i+nTimeplots,:));
+end
+h.Events = cat(2,hEventsCell{:});
+set(h.Events,'ButtonDownFcn',@time_callback)
+
+% % Plot saccade times
+% plot(saccade_times,ones(size(saccade_times))*0.5,'k+','ButtonDownFcn',@time_callback);
+% % Plot eye position
+% normalized_samples = nan(size(samples));
+% normalized_samples(:,1) = samples(:,1)/screen_res(1);
+% normalized_samples(:,2) = samples(:,2)/screen_res(2);
+% plot(times,normalized_samples,'g','ButtonDownFcn',@time_callback); % plot eye position
+
+% Make time selection bar
+h.Line = plot(times([iTime iTime]), get(gca,'YLim'),'k','linewidth',2); % Line indicating current time
+set(h.Time,'ButtonDownFcn',@time_callback) % this must be called after plotting, or it will be overwritten
 
 % Annotate plot
-plot([0 time(end)],[0 0],'k','ButtonDownFcn',@time_callback); % plot separation between plots
-ylim(h.Time,[0 1]);
-xlim(h.Time,[0 time(end)]);
+plot([0 times(end)],[0 0],'k','ButtonDownFcn',@time_callback); % plot separation between plots
+% ylim(h.Time,[0 1]);
+xlim(h.Time,[times(1) times(end)]);
 xlabel('time (s)');
-ylabel('eye pos   |   display'); % Top section is object visibility, bottom section is eye x position
-h.Line = plot(time([iTime iTime]), get(gca,'YLim'),'k','linewidth',2); % Line indicating current time
-set(h.Time,'ButtonDownFcn',@time_callback) % this must be called after plotting, or it will be overwritten
+ylabel('data/events'); % Top section is object visibility, bottom section is eye x position
+legend([timeplotlabel(:);event_categories(:)]);
 
 % -------- GUI CONTROL SETUP -------- %
 disp('Making GUI controls...')
@@ -147,10 +197,10 @@ disp('Done!')
 function redraw() % Update the line and topoplot
     % Check that iTime is within allowable bounds
     if iTime<1, iTime=1;
-    elseif iTime>numel(time), iTime = numel(time);
+    elseif iTime>numel(times), iTime = numel(times);
     end
     % Adjust plots
-    set(h.Line,'XData',time([iTime iTime]));
+    set(h.Line,'XData',times([iTime iTime]));
     axes(h.Plot);
     if isnan(pupilsize(iTime))
         set(h.Dot,'MarkerSize',0.1)
@@ -159,7 +209,7 @@ function redraw() % Update the line and topoplot
     end
     
     % Plot Saccade
-    iSaccade = find(time(iTime)>saccade_times(:,1) & time(iTime)<saccade_times(:,2),1);
+    iSaccade = find(times(iTime)>saccade_times(:,1) & times(iTime)<saccade_times(:,2),1);
     if ~isequal(iSaccade,h.iSac)
         delete(h.Saccade);
         h.Saccade = [];
@@ -171,24 +221,31 @@ function redraw() % Update the line and topoplot
         h.iSac = iSaccade;    
     end    
     
-    % Find display name
-    iDisp = find(display_times>iTime,1); 
-    if isempty(iDisp)
-        iDisp=0;
-        displayname = 'None';
+    % Find event name
+    iEvent = find(event_times<=times(iTime),1,'last'); 
+    if isempty(iEvent)
+        iEvent=0;
+        thisEventName = 'None';
     else
-        displayname = display_names{iDisp};
+        thisEventName = event_names{iEvent};
+        % display image
+        if isempty(event_images{iEvent})
+            set(h.Image,'visible','off')
+        else
+            cdata = imread(event_images{iEvent});
+            set(h.Image,'cdata',cdata,'visible','on')
+        end
     end
     
     % Update title
-    title(sprintf('t = %.3f s\n Display #%d: %s, Saccade #%d',time(iTime),iDisp,displayname,iSaccade)); 
+    title(sprintf('t = %.3f s\n Event #%d: %s, Saccade #%d',times(iTime),iEvent,thisEventName,iSaccade)); 
     drawnow;
 end
 
 function time_callback(hObject,eventdata) % First mouse click on the Time plot brings us here
     cp = get(h.Time,'CurrentPoint'); % get the point(s) (x,y) where the person just clicked
     x = cp(1,1); % choose the x value of one point (the x values should all be the same).
-    iTime = find(time>=x,1); % find closest time to the click
+    iTime = find(times>=x,1); % find closest time to the click
     redraw; % update line and topoplot
 end    
 
@@ -196,7 +253,7 @@ function play_callback(hObject,eventdata)
     % Get button value
     button_is_on = get(hObject,'Value') == get(hObject,'Max');
     % Keep incrementing and plotting
-    while button_is_on && iTime < numel(time) %until we press pause or reach the end
+    while button_is_on && iTime < numel(times) %until we press pause or reach the end
         iTime=iTime+floor(get(h.Speed,'Value'));
         redraw;
         button_is_on = get(hObject,'Value') == get(hObject,'Max');
@@ -215,17 +272,17 @@ function fwd_callback(hObject,eventdata)
 end
 
 function sacback_callback(hObject,eventdata)
-    saccade = find(saccade_times(:,2)<time(iTime),1,'last');
+    saccade = find(saccade_times(:,2)<times(iTime),1,'last');
     if ~isempty(saccade)
-        iTime = find(time>saccade_times(saccade,1),1);    
+        iTime = find(times>saccade_times(saccade,1),1);    
         redraw; % update line and topoplot
     end
 end
 
 function sacfwd_callback(hObject,eventdata)
-    saccade = find(saccade_times(:,1)>time(iTime),1,'first');
+    saccade = find(saccade_times(:,1)>times(iTime),1,'first');
     if ~isempty(saccade)
-        iTime = find(time>saccade_times(saccade,1),1);    
+        iTime = find(times>saccade_times(saccade,1),1);    
         redraw; % update line and topoplot
     end
 end
