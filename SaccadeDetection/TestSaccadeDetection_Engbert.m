@@ -1,14 +1,13 @@
 % TestSaccadeDetection_Engbert.m
 %
 % Created 9/10/15 by DJ.
-
+% Updated 11/20/15 by DJ - switched to ReadSmiSamples_custom
 
 % Import samples and messages
 filename = 'DistractionTask_S1-Samples.txt';
-[samples0,messages] = ReadSmiSamples(filename);
-pos_raw = samples0.POR';
-dt = median(diff(samples0.tSample))/1e3; % convert to ms
-screenSize = [1280, 1024];
+[samples0,messages,paramsRaw] = ReadSmiSamples_custom(filename);
+pos_raw = [samples0.RPORXpx, samples0.RPORYpx]';
+dt = median(diff(samples0.Time))/1e3; % convert from us to ms
 
 % make fake eye pos
 % x_raw  = [1:10,10*ones(1,10), 10:-1:1];

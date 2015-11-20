@@ -1,18 +1,18 @@
-function [events, thresholds] = ImportSmiData_Engbert(eyeFilename,eventFilename,screenSize,thresholds)
+function [events, thresholds,smiParams] = ImportSmiData_Engbert(eyeFilename,thresholds)
 
-% [events, thresholds] = ImportSmiData_Engbert(eyeFilename,screenSize,params)
+% [events, thresholds,smiParams] = ImportSmiData_Engbert(eyeFilename,screenSize,params)
 %
 % Created 9/11/15 by DJ.
 % Updated 9/14/15 by DJ - moved log import to another script.
 % Updated 9/16/15 by DJ - switched all positions from size 2xN to Nx2.
 % Updated 10/30/15 by DJ - switched to ReadSmiEvents for event detection.
+% Updated 11/20/15 by DJ - switched to ReadSmiSamples_custom, which
+% eliminated the need for screenSize input. Also removed eventFilename
+% input.
 
 % Declare defaults
 if ~exist('eyeFilename','var') || isempty(eyeFilename)
     eyeFilename = 'DistractionTask_S1-Samples.txt';
-end
-if ~exist('screenSize','var') || isempty(screenSize)
-    screenSize = [1280, 1024]; % highest available res in 3T-C
 end
 if ~exist('thresholds','var') || isempty(thresholds)
     thresholds = struct('outlierDist',100,'winLength',0,'minBlinkDur',0,'minIbi',50,'minSacDur',0,'minIsi',50,'velThresh',3);
@@ -28,16 +28,17 @@ else
 end
 
 % Import samples and messages
-[samples0,messages] = ReadSmiSamples(eyeFilename);
-pos_raw = samples0.POR;
-dt = median(diff(samples0.tSample))/1e3; % convert from us to ms
-PD_raw = samples0.PD;
+[samples0,messages,smiParams] = ReadSmiSamples_custom(eyeFilename);
+screenSize = str2num(smiParams.Calibration.CalibrationArea);
+pos_raw = [samples0.RPORXpx, samples0.RPORYpx];
+dt = median(diff(samples0.Time))/1e3; % convert from us to ms
+PD_raw = [samples0.RDiaXpx, samples0.RDiaYpx];
 
 %% detect outliers (and zeros)
 isOutlier = any(pos_raw <= 0-thresholds.outlierDist,2) | pos_raw(:,1) > screenSize(1)+thresholds.outlierDist | ...
     pos_raw(:,2) > screenSize(2)+thresholds.outlierDist | any(pos_raw == 0,2);
 % interpolate for now (so they don't mess up smoothing too much)
-pos_raw(isOutlier,:) = interp1(samples0.tSample(~isOutlier),pos_raw(~isOutlier,:),samples0.tSample(isOutlier),'linear','extrap');
+pos_raw(isOutlier,:) = interp1(samples0.Time(~isOutlier),pos_raw(~isOutlier,:),samples0.Time(isOutlier),'linear','extrap');
 
 %% Get smoothed position
 % Use Engbert smoothing (not recommended)
@@ -59,7 +60,7 @@ PD_raw(isOutlier,:) = NaN;
 
 % add samples
 events.samples.position = pos;
-events.samples.time = samples0.tSample/1e3; % convert to from us to ms
+events.samples.time = samples0.Time/1e3; % convert to from us to ms
 events.samples.PD = PD_raw;
 
 %% detect blinks
@@ -82,7 +83,7 @@ thresholds.eta = eta; % save thresholds to struct
 
 %% Add eye events to events struct
 events.samples.position = pos_adj;
-events.samples.time = samples0.tSample/1e3; % convert to from us to ms
+events.samples.time = samples0.Time/1e3; % convert to from us to ms
 events.samples.PD = PD_adj;
 
 events.saccade.time_start = events.samples.time(iSacStart);

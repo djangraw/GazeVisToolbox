@@ -40,7 +40,7 @@ for i=1:numel(keywords)
     colNames = headers.(keywords{i});
     for j=1:numel(colNames);
         switch colNames{j}
-            case {'EventType'}
+            case {'EventType','Description'}
                 eventColStr = [eventColStr ' %s'];
             case {'N/A'}
                 eventColStr = [eventColStr ' %*s'];

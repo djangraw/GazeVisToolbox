@@ -1,13 +1,20 @@
 % ProcessSmiGazeData(filename)
 %
 % Created 8/21/15 by DJ.
+% Updated 11/20/15 by DJ - switched to ReadSmiSamples_custom
 
 
 % Import samples and messages
 filename = 'DistractionTask_S1-Samples.txt';
-[samples0,messages] = ReadSmiSamples(filename);
-screenSize = [1280, 1024];
+[samples0,messages,paramsRaw] = ReadSmiSamples_custom(filename);
+screenSize = str2num(paramsRaw.Calibration.CalibrationArea);
 imageSize = [1200, 670];
+% convert samples0 to expected format
+samples0.POR = [samples0.RPORXpx, samples0.RPORYpx];
+samples0.tSample = samples0.Time/1e3; % convert from us to ms
+% PD_raw = [samples0.RDiaXpx, samples0.RDiaYpx];
+
+
 
 %% record blink times
 isBlink = samples0.POR(:,1)==0;
