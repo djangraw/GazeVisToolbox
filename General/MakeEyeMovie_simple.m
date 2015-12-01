@@ -13,7 +13,7 @@ function h = MakeEyeMovie_simple(samples,pupilsize,times,screen_res,events,timep
 %   - pupilsize is an n-element vector, where each element is the size of
 % the subject's pupil (in unknown units).  This will be the size of the dot
 % on the screen.
-%   - t is an n-element vector of the corresponding times (in seconds).
+%   - t is an n-element vector of the corresponding times (in ms).
 %   - events is an optional struct including saccade and display fields. In
 %   the display field, subfields should be 'time' (in same units as 'times'
 %   input),'name' (string), 'type' (optional, for grouping images in bottom
@@ -43,6 +43,8 @@ function h = MakeEyeMovie_simple(samples,pupilsize,times,screen_res,events,timep
 % Updated 11/20/15 by DJ - added timeplot and timeplotlabel, more
 % intelligent event display, added ability to specify event types and
 % images for the display events.
+% Updated 12/1/15 by DJ - assume times in ms, modified to show underscores
+% in titles/legends.
 
 % -------- INPUTS -------- %
 if ~exist('pupilsize','var') || isempty(pupilsize)
@@ -77,12 +79,12 @@ end
 % normalize inputs
 ps_reg = 50/nanmax(pupilsize); % factor we use to regularize pupil size
 t_start = times(1);
-times = times-t_start;
+times = (times-t_start)/1000;
 
 % Get saccade info
 saccade_start_pos = events.saccade.position_start;
 saccade_end_pos = events.saccade.position_end;
-saccade_times = [events.saccade.time_start, events.saccade.time_end]-t_start; %[start end] in s
+saccade_times = ([events.saccade.time_start, events.saccade.time_end]-t_start)/1000; %[start end] in s
 
 % Fix NaN problems
 pupilsize(isnan(pupilsize)) = 1; % set non-existent pupilsize measures (i.e. during blinks) to tiny dot size
@@ -111,7 +113,7 @@ title(sprintf('t = %.3f s',times(iTime)));
 h.Time = axes('Units','normalized','Position',[0.13 0.1 0.775 0.1],'Yticklabel',''); % set position
 hold on
 % get event info
-event_times = events.display.time-t_start;
+event_times = (events.display.time-t_start)/1000;
 event_names = events.display.name;
 if isfield(events.display,'type')
     event_types = events.display.type;
@@ -163,7 +165,7 @@ plot([0 times(end)],[0 0],'k','ButtonDownFcn',@time_callback); % plot separation
 xlim(h.Time,[times(1) times(end)]);
 xlabel('time (s)');
 ylabel('data/events'); % Top section is object visibility, bottom section is eye x position
-legend([timeplotlabel(:);event_categories(:)]);
+legend([timeplotlabel(:);event_categories(:)],'interpreter','none');
 
 % -------- GUI CONTROL SETUP -------- %
 disp('Making GUI controls...')
@@ -238,7 +240,8 @@ function redraw() % Update the line and topoplot
     end
     
     % Update title
-    title(sprintf('t = %.3f s\n Event #%d: %s, Saccade #%d',times(iTime),iEvent,thisEventName,iSaccade)); 
+    title(sprintf('t = %.3f s\n Event #%d: %s, Saccade #%d',times(iTime),...
+        iEvent,thisEventName,iSaccade),'interpreter','none'); 
     drawnow;
 end
 
