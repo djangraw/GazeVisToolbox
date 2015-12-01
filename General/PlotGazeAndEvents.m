@@ -42,26 +42,35 @@ end
 %% Plot fixations
 for i=1:numel(events.fixation.time_start)
     plot(([events.fixation.time_start(i) events.fixation.time_end(i)]-t0)/1000,[1 1]*events.fixation.position(i,1),'m.-','linewidth',2);
-    plot(([events.fixation.time_start(i) events.fixation.time_end(i)]-t0)/1000,[1 1]*events.fixation.position(i,2),'y.-','linewidth',2);
+    plot(([events.fixation.time_start(i) events.fixation.time_end(i)]-t0)/1000,[1 1]*events.fixation.position(i,2),'g.-','linewidth',2);
 end
 
 
 %% Plot histograms of durations
 xDur = 0:.02:1;
+% blinks
 subplot(234);
-hist((events.blink.time_end-events.blink.time_start)/1000,xDur);
+yBlinkDur = hist((events.blink.time_end-events.blink.time_start)/1000,xDur);
+h = bar(xDur,yBlinkDur);
+set(h,'FaceColor','r');
 xlabel('blink duration (s)');
 ylabel('# blinks');
 title(sprintf('Blinks'),'interpreter','none')
 xlim([xDur(1) xDur(end)]);
+% saccades
 subplot(235);
-hist((events.fixation.time_end-events.fixation.time_start)/1000,xDur);
+ySacDur = hist((events.saccade.time_end-events.saccade.time_start)/1000,xDur);
+h = bar(xDur,ySacDur);
+set(h,'FaceColor','b');
 xlabel('saccade duration (s)');
 ylabel('# saccades');
 title(sprintf('Saccades'),'interpreter','none')
 xlim([xDur(1) xDur(end)]);
+% fixations
 subplot(236);
-hist((events.saccade.time_end-events.saccade.time_start)/1000,xDur);
+yFixDur = hist((events.fixation.time_end-events.fixation.time_start)/1000,xDur);
+h = bar(xDur,yFixDur);
+set(h,'FaceColor','g');
 xlabel('fixation duration (s)');
 ylabel('# fixations');
 title(sprintf('Fixations'),'interpreter','none')
