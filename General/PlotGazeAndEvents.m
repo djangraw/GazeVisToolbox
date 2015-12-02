@@ -27,7 +27,7 @@ plotColors = get(h,'Color');
 title('eye position','interpreter','none')
 % xlim([0 10]+2e2)
 % make legend for all the event types
-MakeLegend([plotColors; {'r';'b';'m';'y'}],{'gaze_x','gaze_y','blink','saccade','fixation_x','fixation_y'},[1 1 2 2 2 2]);
+MakeLegend([plotColors; {'r';'b';'m';'g'}],{'gaze_x','gaze_y','blink','saccade','fixation_x','fixation_y'},[1 1 2 2 2 2]);
 
 %% Plot blinks
 for i=1:numel(events.blink.time_start)

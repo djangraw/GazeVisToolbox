@@ -1,8 +1,8 @@
-function [questions,options,answers] = PsychoPy_ParseQuestions(text_file)
+function [questions,options,answers,comments] = PsychoPy_ParseQuestions(text_file)
 
 % Logs specified questions from a text file and arranges into data struct.
 %
-% datastruct = PsychoPy_ParseQuestions(text_file)
+% [questions,options,answers,comments] = PsychoPy_ParseQuestions(text_file)
 %
 % INPUTS:
 % - text_file should be the filename of the questions text file in which
@@ -11,8 +11,20 @@ function [questions,options,answers] = PsychoPy_ParseQuestions(text_file)
 %   = '+' for a correct answer to the preceding question
 %   = '-' for an incorrect answer to the preceding question
 %
+% OUTPUTS:
+% - questions is an n-element cell array of strings indicating the
+% questions asked to the subject.
+% - options is an n-element cell array of cell arrays of strings indicating 
+% the response options presented to the subject on each question.
+% - answers is an n-element array of integers indicating the correct
+% answer to each question. 
+% - comments is an n-element cell array of strings indicating the last
+% comment before each question (often used to place questions in
+% categories).
+%
 % Created 2/4/15 by DJ.
-    
+% Updated 12/1/15 by DJ - added comments output.
+
 % Set up
 fid = fopen(text_file);
 fseek(fid,0,'eof'); % find end of file
@@ -22,26 +34,32 @@ fseek(fid,0,'bof'); % rewind to beginning
 
 % Get the messages we're looking for
 MAX_NQ = 1000; % # questions
-[questions,options] = deal(cell(1,MAX_NQ));
+[questions,options,comments] = deal(cell(1,MAX_NQ));
 answers = nan(1,MAX_NQ);
+lastComment = '';
 iQ = 0;
 while ftell(fid) < eof % if we haven't reached the end of the text file
     str = fgetl(fid); % read in next line of text file
     if strncmp(str,'?',1)
         iQ = iQ + 1;
         questions{iQ} = str(2:end);
-        options{iQ} = {};        
+        options{iQ} = {};
+        comments{iQ} = lastComment;
     elseif strncmp(str,'+',1)
         options{iQ} = [options{iQ},{str(2:end)}];
         answers(iQ) = length(options{iQ});
     elseif strncmp(str,'-',1)
         options{iQ} = [options{iQ},{str(2:end)}];
+    elseif strncmp(str,'#',1)
+        firstChar = find(isstrprop(str,'alphanum'),1); % exclude leading # and whitespace
+        lastComment = str(firstChar:end);
     end
 end
 % crop
 questions = questions(1:iQ);
 options = options(1:iQ);
 answers = answers(1:iQ);
+comments = comments(1:iQ);
 
 % Clean up
 fclose(fid);

@@ -99,5 +99,5 @@ events.fixation.time_end = events.samples.time(iFixEnd);
 events.fixation.position = fixPos;
 
 %% Add sync events
-events.message.time = messages.tMessage/1e3; % convert to ms
-events.message.text = messages.text;
+events.message.time = messages.Time/1e3; % convert to ms
+events.message.text = messages.Text;
