@@ -23,25 +23,39 @@ if isfield(info,'RIGHT_GAZE_Y');
 elseif isfield(info,'LEFT_GAZE_Y');
     eyeUsed = 'LEFT';
 end
-% Feed results into struct
+
+%% Translate info into events struct
 fprintf('Translating into samples struct...\n');
-%% samples
-events.samples.position = [info.([eyeUsed '_GAZE_X']), info.([eyeUsed '_GAZE_Y'])];
+% Extract eye position if it's a numeric or character array
+if isnumeric(info.([eyeUsed '_GAZE_X'])) % use as is
+    eyePos = [info.([eyeUsed '_GAZE_X']), info.([eyeUsed '_GAZE_Y'])];
+else % convert to double first (missing data '.' will be set to NaN)
+    eyePos = [str2double(cellstr(info.([eyeUsed '_GAZE_X']))), str2double(cellstr(info.([eyeUsed '_GAZE_Y'])))];
+end
+% samples
+events.samples.position = eyePos;
 events.samples.time = info.TIMESTAMP;
-events.samples.pupilsize = info.([eyeUsed '_PUPIL_SIZE']);
+if isnumeric(info.([eyeUsed '_PUPIL_SIZE'])) % use as is
+    events.samples.pupilsize = info.([eyeUsed '_PUPIL_SIZE']);
+else % convert to double first (missing data '.' will be set to NaN)
+    events.samples.pupilsize = str2double(cellstr(info.([eyeUsed '_PUPIL_SIZE'])));
+end
 events.samples.eye = repmat(lower(eyeUsed(1)),size(events.samples.time));
+events.samples.trial = info.TRIAL_INDEX;
 % blinks
 isBlinkStart = diff([0; info.([eyeUsed '_IN_BLINK'])]) > 0;
 isBlinkEnd = diff([info.([eyeUsed '_IN_BLINK']); 0]) < 0;
 events.blink.time_start = info.TIMESTAMP(isBlinkStart);
 events.blink.time_end = info.TIMESTAMP(isBlinkEnd);
+events.blink.trial = info.TRIAL_INDEX(isBlinkStart);
 % saccades
 isSacStart = diff([0; info.([eyeUsed '_IN_SACCADE'])]) > 0;
 isSacEnd = diff([info.([eyeUsed '_IN_SACCADE']); 0]) < 0;
 events.saccade.time_start = info.TIMESTAMP(isSacStart);
 events.saccade.time_end = info.TIMESTAMP(isSacEnd);
-events.saccade.position_start = [info.([eyeUsed '_GAZE_X'])(isSacStart), info.([eyeUsed '_GAZE_Y'])(isSacStart)];
-events.saccade.position_end = [info.([eyeUsed '_GAZE_X'])(isSacEnd), info.([eyeUsed '_GAZE_Y'])(isSacEnd)];
+events.saccade.position_start = eyePos(isSacStart,:);
+events.saccade.position_end = eyePos(isSacEnd,:);
+events.saccade.trial = info.TRIAL_INDEX(isSacStart);
 % fixations
 isInFix = ~info.([eyeUsed '_IN_SACCADE']) & ~info.([eyeUsed '_IN_BLINK']);
 iFixStart = find(diff([0; isInFix]) > 0);
@@ -49,10 +63,13 @@ iFixEnd = find(diff([isInFix; 0]) < 0);
 events.fixation.time_start = info.TIMESTAMP(iFixStart);
 events.fixation.time_end = info.TIMESTAMP(iFixEnd);
 for i=1:numel(iFixStart)
-    events.fixation.position(i,:) = mean([info.([eyeUsed '_GAZE_X'])(iFixStart(i):iFixEnd(i)), info.([eyeUsed '_GAZE_Y'])(iFixStart(i):iFixEnd(i))],1);
+    events.fixation.position(i,:) = mean(eyePos(iFixStart(i):iFixEnd(i),:),1);
 end
+events.fixation.trial = info.TRIAL_INDEX(iFixStart);
 % messages
-isMsgStart = [true; any(diff(info.SAMPLE_MESSAGE,1),2)];
-events.message.time = info.TIMESTAMP(isMsgStart);
-events.message.text = cellstr(info.SAMPLE_MESSAGE(isMsgStart,:));
+if isfield(info,'SAMPLE_MESSAGE') % if this column is included
+    isMsgStart = [true; any(diff(info.SAMPLE_MESSAGE,1),2)];
+    events.message.time = info.TIMESTAMP(isMsgStart);
+    events.message.text = cellstr(info.SAMPLE_MESSAGE(isMsgStart,:));
+end
 fprintf('Done!\n')
