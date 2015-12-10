@@ -1,4 +1,4 @@
-function h = MakeEyeMovie_simple(samples,pupilsize,times,screen_res,events,timeplot,timeplotlabel)
+function h = MakeEyeMovie_simple(samples,pupilsize,times,screen_res,events,timeplot,timeplotlabel,image_pos)
 % Makes a figure/UI for scrolling through eye position data like a movie.
 %
 % MakeEyeMovie_simple(samples,pupilsize,t,screen_res,events,timeplot,timeplotlabel)
@@ -23,6 +23,8 @@ function h = MakeEyeMovie_simple(samples,pupilsize,times,screen_res,events,timep
 % arbitrary variables.
 %   - timeplotlabel is an r-element cell array of strings labeling the
 % timeplot variables.
+%   - image_pos is a 4-element vector including the x,y, width, and
+%   height of the image.
 %
 % Outputs:
 %   - h is a struct containing the handles for various items on the
@@ -45,6 +47,7 @@ function h = MakeEyeMovie_simple(samples,pupilsize,times,screen_res,events,timep
 % images for the display events.
 % Updated 12/1/15 by DJ - assume times in ms, modified to show underscores
 % in titles/legends.
+% Updated 12/8/15 by DJ - added image_pos input
 
 % -------- INPUTS -------- %
 if ~exist('pupilsize','var') || isempty(pupilsize)
@@ -75,6 +78,9 @@ if ~exist('timeplotlabel','var') || isempty(timeplotlabel)
         timeplotlabel{i} = sprintf('input %d',i);
     end
 end
+if ~exist('image_pos','var') || isempty(image_pos)
+    image_pos = [0,0,screen_res];
+end
 % -------- SETUP -------- %
 % normalize inputs
 ps_reg = 50/nanmax(pupilsize); % factor we use to regularize pupil size
@@ -87,7 +93,7 @@ saccade_end_pos = events.saccade.position_end;
 saccade_times = ([events.saccade.time_start, events.saccade.time_end]-t_start)/1000; %[start end] in s
 
 % Fix NaN problems
-pupilsize(isnan(pupilsize)) = 1; % set non-existent pupilsize measures (i.e. during blinks) to tiny dot size
+pupilsize(isnan(pupilsize) | pupilsize<=0) = 1; % set non-existent pupilsize measures (i.e. during blinks) to tiny dot size
 
 % -------- INITIAL PLOTTING -------- %
 disp('Setting up figure...');
@@ -99,6 +105,8 @@ iTime = 1;
 h.Plot = axes('Units','normalized','Position',[0.13 0.3 0.775 0.65],'ydir','reverse'); % set position
 hold on;
 rectangle('Position',[0 0 screen_res]);
+imTopLeft = image_pos(1:2);
+imBotRight = image_pos(1:2)+image_pos(3:4);
 h.Image = image(0,0,cat(3,1,0,1));
 h.Dot = plot(samples(iTime,1),samples(iTime,2),'k.','MarkerSize',pupilsize(iTime)*ps_reg);
 axis(h.Plot,[-200 screen_res(1)+200 -200 screen_res(2)+200]);
@@ -235,7 +243,9 @@ function redraw() % Update the line and topoplot
             set(h.Image,'visible','off')
         else
             cdata = imread(event_images{iEvent});
-            set(h.Image,'cdata',cdata,'visible','on')
+            set(h.Image,'xdata',linspace(imTopLeft(1),imBotRight(1),size(cdata,2)),...
+                'ydata',linspace(imTopLeft(2),imBotRight(2),size(cdata,1)),...
+                'cdata',cdata,'visible','on')
         end
     end
     
