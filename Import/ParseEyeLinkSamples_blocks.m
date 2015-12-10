@@ -24,6 +24,7 @@ end
 
 %% Get fields and format spec
 fprintf('Reading EyeLink samples from file %s...\n',filename)
+tic
 fid = fopen(filename);
 % parse header
 header = fgetl(fid);
@@ -122,4 +123,4 @@ if isfield(info,'SAMPLE_MESSAGE') % if this column is included
     events.message.time = info.TIMESTAMP(isMsgStart);
     events.message.text = cellstr(info.SAMPLE_MESSAGE(isMsgStart,:));
 end
-fprintf('Done!\n')
+fprintf('Done! Took %.3f seconds.\n',toc)

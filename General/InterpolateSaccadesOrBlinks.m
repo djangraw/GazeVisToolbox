@@ -19,6 +19,7 @@ function [samplesInterp, isInSacOrBlink] = InterpolateSaccadesOrBlinks(tSamples,
 % were interpolated are true.
 %
 % Created 5/8/15 by DJ.
+% Updated 12/10/15 by DJ - fixed blinksonly bug.
 
 % Handle defaults
 if ~exist('method','var') || isempty(method)
@@ -39,14 +40,19 @@ if blinksonly
     nBlinks = numel(events.blink.time_start);
 
     % find eye
-    eBlinks = events.blink.eye;
-    eSaccades = events.saccade.eye;
+    if isfield(events.blink,'eye')
+        eBlinks = events.blink.eye;
+        eSaccades = events.saccade.eye;
+    else
+        eBlinks = repmat('r',size(events.blink.time_start));
+        eSaccades = repmat('r',size(events.saccade.time_start));
+    end    
     
     % find sample times in blinks    
     for i=1:nBlinks
         % find surrounding saccade
         iSac = find(tSaccades(:,1)<tBlinks(i,1) & eSaccades==eBlinks(i),1,'last');        
-        isInSacOrBlink(tSamples>tSaccades(iSac,1) & tSamples<tSaccades(i,2)) = true;
+        isInSacOrBlink(tSamples>tSaccades(iSac,1) & tSamples<tSaccades(iSac,2)) = true;
     end
 else
     % set up
