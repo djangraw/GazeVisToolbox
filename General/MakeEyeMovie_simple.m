@@ -73,7 +73,7 @@ if ~exist('timeplot','var') || isempty(timeplot)
     timeplotlabel = {'pos_x','pos_y'};
 end
 if ~exist('timeplotlabel','var') || isempty(timeplotlabel)
-    timeplotlabel = cell(1,size(timeplot));
+    timeplotlabel = cell(1,size(timeplot,2));
     for i=1:size(timeplot,2)
         timeplotlabel{i} = sprintf('input %d',i);
     end

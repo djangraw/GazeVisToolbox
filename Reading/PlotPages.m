@@ -29,6 +29,8 @@ function [hFig,hText,hBoxes] = PlotPages(data,pagesToPlot,eyesToPlot,figNum,scre
 % Updated 8/31/15 by DJ - added screenSize input.
 % Updated 10/27/15 by DJ - added auto screenSize detection
 % Updated 10/30/15 by DJ - removed screenSize input, added figNum input.
+% Updated 12/17/15 by DJ - allow imageSize that doesn't match original
+% image size
 
 if ~exist('figNum','var') || isempty(figNum)
     figNum = 300+(1:numel(pagesToPlot));
@@ -66,14 +68,19 @@ if ~exist('imageSize','var') || isempty(imageSize)
 end
 % get offsets for words to be plotted later
 imTopLeft = screenSize/2 - imageSize/2; 
+% get scale of image
+origImgSize = max(data(1).pageinfo.pos(:,1:2)+data(1).pageinfo.pos(:,3:4));
+imScale = imageSize./origImgSize;
 
 % set up
-fontSize = 50;
+fontSize = 50 * min(imScale);
 scaling = 0.4;
-% get pageinfo and offset by top-left of image
+% get pageinfo, offset by top-left of image, and scale by 
 pageinfo = AppendStructs([data.pageinfo]);
-pageinfo.pos(:,1) = pageinfo.pos(:,1) + imTopLeft(1);
-pageinfo.pos(:,2) = pageinfo.pos(:,2) + imTopLeft(2);
+pageinfo.pos(:,1) = pageinfo.pos(:,1)*imScale(1) + imTopLeft(1);
+pageinfo.pos(:,2) = pageinfo.pos(:,2)*imScale(2) + imTopLeft(2);
+pageinfo.pos(:,3) = pageinfo.pos(:,3)*imScale(1);
+pageinfo.pos(:,4) = pageinfo.pos(:,4)*imScale(2);
 
 % get info
 iFile = zeros(size(pagesToPlot));
@@ -102,13 +109,13 @@ for i=1:numel(pagesToPlot)
                 fixTime = [data(iFile(i)).events.fixation_matched.time_start, data(iFile(i)).events.fixation_matched.time_end];
                 fixPos = data(iFile(i)).events.fixation_matched.position;    
                 shapes{j} = 'o';
-            case 'left'
-                isLeft = data(iFile(i)).events.fixation.eye == 'L';
+            case {'left','L'}
+                isLeft = upper(data(iFile(i)).events.fixation.eye) == 'L';
                 fixTime = [data(iFile(i)).events.fixation.time_start(isLeft), data(iFile(i)).events.fixation.time_end(isLeft)];
                 fixPos = data(iFile(i)).events.fixation.position(isLeft,:);    
                 shapes{j} = 'd';
-            case 'right'
-                isRight = data(iFile(i)).events.fixation.eye == 'R';
+            case {'right','R'}
+                isRight = upper(data(iFile(i)).events.fixation.eye) == 'R';
                 fixTime = [data(iFile(i)).events.fixation.time_start(isRight), data(iFile(i)).events.fixation.time_end(isRight)];
                 fixPos = data(iFile(i)).events.fixation.position(isRight,:);    
                 shapes{j} = 's';

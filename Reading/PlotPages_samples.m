@@ -30,6 +30,8 @@ function [hFig,hText,hBoxes] = PlotPages_samples(data,pagesToPlot,eyesToPlot,fig
 % Updated 10/27/15 by DJ - added auto screenSize detection
 % Updated 10/30/15 by DJ - removed screenSize input, added figNum input.
 % Updated 11/3/15 by DJ - use samples instead of fixations
+% Updated 12/17/15 by DJ - allow imageSize that doesn't match original
+% image size
 
 if ~exist('figNum','var') || isempty(figNum)
     figNum = 300+(1:numel(pagesToPlot));
@@ -65,16 +67,22 @@ if ~exist('imageSize','var') || isempty(imageSize)
         imageSize = [1201, 945];
     end
 end
+
 % get offsets for words to be plotted later
 imTopLeft = screenSize/2 - imageSize/2; 
+% get scale of image
+origImgSize = max(data(1).pageinfo.pos(:,1:2)+data(1).pageinfo.pos(:,3:4));
+imScale = imageSize./origImgSize;
 
 % set up
-fontSize = 50;
+fontSize = 50 * min(imScale);
 scaling = 0.4;
-% get pageinfo and offset by top-left of image
+% get pageinfo, offset by top-left of image, and scale by 
 pageinfo = AppendStructs([data.pageinfo]);
-pageinfo.pos(:,1) = pageinfo.pos(:,1) + imTopLeft(1);
-pageinfo.pos(:,2) = pageinfo.pos(:,2) + imTopLeft(2);
+pageinfo.pos(:,1) = pageinfo.pos(:,1)*imScale(1) + imTopLeft(1);
+pageinfo.pos(:,2) = pageinfo.pos(:,2)*imScale(2) + imTopLeft(2);
+pageinfo.pos(:,3) = pageinfo.pos(:,3)*imScale(1);
+pageinfo.pos(:,4) = pageinfo.pos(:,4)*imScale(2);
 
 % get info
 iFile = zeros(size(pagesToPlot));
@@ -99,12 +107,12 @@ for i=1:numel(pagesToPlot)
     shapes = cell(1,numel(eyesToPlot));
     for j=1:numel(eyesToPlot)
         switch eyesToPlot{j}
-            case 'left'
+            case {'left','L'}
                 isLeft = data(iFile(i)).events.samples.eye == 'L';
                 sampleTime = data(iFile(i)).events.samples.time(isLeft);
                 samplePos = data(iFile(i)).events.samples.position(isLeft,:);    
                 shapes{j} = 'v';
-            case 'right'
+            case {'right','R'}
                 isRight = data(iFile(i)).events.samples.eye == 'R';
                 sampleTime = data(iFile(i)).events.samples.time(isRight);
                 samplePos = data(iFile(i)).events.samples.position(isRight,:);    
