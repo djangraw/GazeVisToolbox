@@ -84,6 +84,13 @@ pageinfo.pos(:,2) = pageinfo.pos(:,2)*imScale(2) + imTopLeft(2);
 pageinfo.pos(:,3) = pageinfo.pos(:,3)*imScale(1);
 pageinfo.pos(:,4) = pageinfo.pos(:,4)*imScale(2);
 
+% get pageTag
+if data(1).params.subject<9
+    pageTag = 'DisplayPage';
+else
+    pageTag = 'Display Page';
+end
+
 % get info
 iFile = zeros(size(pagesToPlot));
 iPage = zeros(size(pagesToPlot));

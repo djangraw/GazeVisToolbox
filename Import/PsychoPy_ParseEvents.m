@@ -51,6 +51,7 @@ function datastruct = PsychoPy_ParseEvents(text_file,types,start_code,end_code)
 % Updated 2/19/14 by DJ - fixed end trial bug
 % Updated 9/10/14 by DJ - added START option.
 % Updated 3/12/15 by DJ - added sequence option, fixed 'other' option
+% Updated 1/19/16 by DJ - added displayset option.
 
 if nargin<2 || isempty(types)
     types = {'block','soundset','soundstart','key','display','sequence'};%,'message'};
@@ -105,6 +106,11 @@ for i=1:numel(types)
             iInfo{i} = [1 4];
             formats{i} = '%f %s'; % Message format: <time> 	EXP 	Display <name>
             values{i} = cell(0,2);
+        case 'displayset'
+            words{i} = 'text = ';
+            iInfo{i} = [1 3]; % purposefully left one out so as to catch if statement
+            formats{i} = '%f %s %s'; % Message format: <time> 	EXP 	<name>: text = '<text>'
+            values{i} = cell(0,3);
         case 'sequence'
             words{i} = 'Sequence';
             iInfo{i} = [1 3 5];
@@ -148,6 +154,9 @@ while ftell(fid) < eof % if we haven't reached the end of the text file
                 values{i} = [values{i}; stuff]; % add the info from this line as an additional row
             elseif strcmp(types{i},'eyesample')
                 values{i} = [values{i}; NaN,NaN,NaN]; % add a blank sample so the time points still line up           
+            elseif strcmp(types{i},'displayset')
+                iEquals = find(str=='=',1); % text will come just after equals sign
+                values{i} = [values{i}; stuff(1:2), {str(iEquals+3:end-1)}]; % exclude single quotes around text
             else
                 warning('FindEvents:IncompleteEvent','Unable to decipher the following event fully:\n %s',str); % sometimes saccades are not logged fully
             end
@@ -183,6 +192,10 @@ for i=1:numel(types)
         case 'display'
             datastruct.display.time = cellfun(@str2num,values{i}(:,1)); % first output is timestamp of start and end of fixation
             datastruct.display.name = values{i}(:,2); % first output is timestamp of start and end of fixation
+        case 'displayset'
+            datastruct.displayset.time = cellfun(@str2num,values{i}(:,1)); % timestamp when display was set
+            datastruct.displayset.name = values{i}(:,2); % name of TextStim object
+            datastruct.displayset.text = values{i}(:,3); % text displayed in this text object
         case 'sequence'
             datastruct.sequence.time_start = cellfun(@str2num,values{i}(strcmp('Start',values{i}(:,2)),1));
             datastruct.sequence.number = cellfun(@str2num,values{i}(strcmp('Start',values{i}(:,2)),3));

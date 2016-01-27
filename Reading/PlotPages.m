@@ -82,13 +82,20 @@ pageinfo.pos(:,2) = pageinfo.pos(:,2)*imScale(2) + imTopLeft(2);
 pageinfo.pos(:,3) = pageinfo.pos(:,3)*imScale(1);
 pageinfo.pos(:,4) = pageinfo.pos(:,4)*imScale(2);
 
+% get pageTag
+if data(1).params.subject<9
+    pageTag = 'DisplayPage';
+else
+    pageTag = 'Display Page';
+end
+
 % get info
 iFile = zeros(size(pagesToPlot));
 iPage = zeros(size(pagesToPlot));
 [tPageStart, tPageEnd, pageNum] = deal(cell(1,numel(data)));
 nPages = zeros(1,numel(data));
 for j=1:numel(data)
-    [tPageStart{j},tPageEnd{j}, pageNum{j}] = GetPageTimes(data(j).events,'DisplayPage');
+    [tPageStart{j},tPageEnd{j}, pageNum{j}] = GetPageTimes(data(j).events,pageTag);
     nPages(j) = numel(pageNum{j});
     [isOnPage, iPageThis] = ismember(pagesToPlot,pageNum{j});
     iFile(isOnPage) = j;

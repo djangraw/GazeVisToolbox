@@ -16,11 +16,14 @@ function [eye,psy] = GetSyncEvents_SmiData(data,SyncEvents)
 % Created 2/11/14 by DJ.
 % Updated 2/19/14 by DJ - comments.
 % Updated 9/11/15 by DJ - Converted from NEDE to Smi version.
+% Updated 1/15/16 by DJ - added DISPLAY_PREFIX, with added space after 'Display'
 
 if nargin<3 || isempty(SyncEvents)
     % Set up
     SyncEvents = {'Fixation','Page'}; % numbers that NEDE sends to the EEG through the eye tracker
 end
+DISPLAY_PREFIX = 'Display '; % for EyeLink or post-2015 SMI files
+% DISPLAY_PREFIX = 'Display'; % for pre-2016 SMI files
 
 % Extract info from SMI messages
 nSessions = length(data);
@@ -69,13 +72,13 @@ end
 %% Crop to sync events
 isSyncEvent = false(1,numel(eye.time));
 for i=1:numel(SyncEvents)
-    isSyncEvent(strncmp(['Display' SyncEvents{i}],eye.name,length(['Display' SyncEvents{i}]))) = true;
+    isSyncEvent(strncmp([DISPLAY_PREFIX SyncEvents{i}],eye.name,length([DISPLAY_PREFIX SyncEvents{i}]))) = true;
 end
 % crop all struct fields
 eye = CropStruct(eye,isSyncEvent);
 % get rid of leading 'Display' in each event name (to match psy struct)
 for i=1:numel(eye.name)
-    eye.name{i} = eye.name{i}((length('Display')+1):end); % crop out leading 'Display'
+    eye.name{i} = eye.name{i}((length(DISPLAY_PREFIX)+1):end); % crop out leading 'Display'
 end
 
 % do the same for psy struct
