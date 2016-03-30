@@ -1,6 +1,6 @@
 # GazeVisToolbox
 
-MATLAB functions and GUIs for the visulization of eye tracking data, especially that acquired with EyeLink and SMI trackers. 
+MATLAB functions and GUIs for the visualization of eye tracking data, especially those acquired with EyeLink and SMI trackers. 
 
 Depends on some helper scripts from https://github.com/djangraw/EegAndEye .
 
