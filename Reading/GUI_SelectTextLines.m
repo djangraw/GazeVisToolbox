@@ -131,11 +131,13 @@ else
     handles.imageSize = [1920, 1200];
 end
 imTopLeft = handles.screenSize/2 - handles.imageSize/2; 
-for i=1:numel(handles.wordpos)
-    handles.wordpos{i}(:,1) = handles.wordpos{i}(:,1) + imTopLeft(1);
-    handles.wordpos{i}(:,2) = handles.wordpos{i}(:,2) + imTopLeft(2);
-end
-    
+% adjust if necessary
+if min(handles.wordpos{1}(:,1))~=imTopLeft(1)
+    for i=1:numel(handles.wordpos)
+        handles.wordpos{i}(:,1) = handles.wordpos{i}(:,1) + imTopLeft(1);
+        handles.wordpos{i}(:,2) = handles.wordpos{i}(:,2) + imTopLeft(2);
+    end
+end    
 
 % initialize variables
 handles.iTrial = 1;

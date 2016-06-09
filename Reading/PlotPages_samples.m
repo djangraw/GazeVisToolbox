@@ -32,6 +32,7 @@ function [hFig,hText,hBoxes] = PlotPages_samples(data,pagesToPlot,eyesToPlot,fig
 % Updated 11/3/15 by DJ - use samples instead of fixations
 % Updated 12/17/15 by DJ - allow imageSize that doesn't match original
 % image size
+% Updated 2/1/16 by DJ - added AdjustWordPos call
 
 if ~exist('figNum','var') || isempty(figNum)
     figNum = 300+(1:numel(pagesToPlot));
@@ -70,19 +71,27 @@ end
 
 % get offsets for words to be plotted later
 imTopLeft = screenSize/2 - imageSize/2; 
-% get scale of image
-origImgSize = max(data(1).pageinfo.pos(:,1:2)+data(1).pageinfo.pos(:,3:4));
-imScale = imageSize./origImgSize;
-
+% get pageinfo for all sessions
+pageinfo = AppendStructs([data.pageinfo]);
+% Rescale/adjust wordpos if necessary
+if min(pageinfo.pos(:,1))~=imTopLeft(1) % if it hasn't been adjusted yet
+    [pageinfo.pos,imScale,imOffset] = AdjustWordPos(pageinfo.pos,imageSize,screenSize);
+    % get scale of image
+%     origImgSize = max(data(1).pageinfo.pos(:,1:2)+data(1).pageinfo.pos(:,3:4));
+%     imScale = imageSize./origImgSize;
+% get pageinfo, offset by top-left of image, and scale by 
+%     if min(pageinfo.pos(:,1))==0 % if it hasn't been adjusted yet
+%         pageinfo.pos(:,1) = pageinfo.pos(:,1)*imScale(1) + imTopLeft(1);
+%         pageinfo.pos(:,2) = pageinfo.pos(:,2)*imScale(2) + imTopLeft(2);
+%         pageinfo.pos(:,3) = pageinfo.pos(:,3)*imScale(1);
+%         pageinfo.pos(:,4) = pageinfo.pos(:,4)*imScale(2);
+%     end
+else    
+    imScale = [1 1];
+end
 % set up
 fontSize = 50 * min(imScale);
 scaling = 0.4;
-% get pageinfo, offset by top-left of image, and scale by 
-pageinfo = AppendStructs([data.pageinfo]);
-pageinfo.pos(:,1) = pageinfo.pos(:,1)*imScale(1) + imTopLeft(1);
-pageinfo.pos(:,2) = pageinfo.pos(:,2)*imScale(2) + imTopLeft(2);
-pageinfo.pos(:,3) = pageinfo.pos(:,3)*imScale(1);
-pageinfo.pos(:,4) = pageinfo.pos(:,4)*imScale(2);
 
 % get pageTag
 if data(1).params.subject<9

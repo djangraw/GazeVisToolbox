@@ -31,6 +31,7 @@ function [hFig,hText,hBoxes] = PlotPages(data,pagesToPlot,eyesToPlot,figNum,scre
 % Updated 10/30/15 by DJ - removed screenSize input, added figNum input.
 % Updated 12/17/15 by DJ - allow imageSize that doesn't match original
 % image size
+% Updated 2/1/16 by DJ - added AdjustWordPos call
 
 if ~exist('figNum','var') || isempty(figNum)
     figNum = 300+(1:numel(pagesToPlot));
@@ -68,19 +69,24 @@ if ~exist('imageSize','var') || isempty(imageSize)
 end
 % get offsets for words to be plotted later
 imTopLeft = screenSize/2 - imageSize/2; 
-% get scale of image
-origImgSize = max(data(1).pageinfo.pos(:,1:2)+data(1).pageinfo.pos(:,3:4));
-imScale = imageSize./origImgSize;
-
-% set up
-fontSize = 50 * min(imScale);
-scaling = 0.4;
-% get pageinfo, offset by top-left of image, and scale by 
+% get pageinfo for all sessions
 pageinfo = AppendStructs([data.pageinfo]);
-pageinfo.pos(:,1) = pageinfo.pos(:,1)*imScale(1) + imTopLeft(1);
-pageinfo.pos(:,2) = pageinfo.pos(:,2)*imScale(2) + imTopLeft(2);
-pageinfo.pos(:,3) = pageinfo.pos(:,3)*imScale(1);
-pageinfo.pos(:,4) = pageinfo.pos(:,4)*imScale(2);
+% adjust
+pageinfo.cumulativePage = pageinfo.page;
+restarts = find(diff(pageinfo.page)<0);
+for i=1:numel(restarts)
+    pageinfo.cumulativePage(restarts(i)+1:end) = pageinfo.cumulativePage(restarts(i)+1:end) + pageinfo.cumulativePage(restarts(i));
+end
+
+% Rescale/adjust wordpos if necessary
+if min(pageinfo.pos(:,1))~=imTopLeft(1) % if it hasn't been adjusted yet
+    [pageinfo.pos,imScale,imOffset] = AdjustWordPos(pageinfo.pos,imageSize,screenSize);
+else    
+    imScale = [1 1];
+end
+% set up
+fontSize = 40 * min(imScale);
+scaling = 0.3;
 
 % get pageTag
 if data(1).params.subject<9
@@ -96,6 +102,8 @@ iPage = zeros(size(pagesToPlot));
 nPages = zeros(1,numel(data));
 for j=1:numel(data)
     [tPageStart{j},tPageEnd{j}, pageNum{j}] = GetPageTimes(data(j).events,pageTag);
+    % Convert pageinfo pages to include all pages
+    pageNum{j} = pageNum{j} - pageNum{j}(1) + 1 + sum(nPages(1:j-1));
     nPages(j) = numel(pageNum{j});
     [isOnPage, iPageThis] = ismember(pagesToPlot,pageNum{j});
     iFile(isOnPage) = j;
@@ -107,21 +115,22 @@ hFig = [];
 [hText,hBoxes] = deal(cell(1,numel(pagesToPlot)));
 for i=1:numel(pagesToPlot)
     hFig(i) = figure(figNum(i));    
-    [hText{i}, hBoxes{i}] = DrawPage(pageinfo.words(pageinfo.page==pagesToPlot(i)),pageinfo.pos(pageinfo.page==pagesToPlot(i),:)*scaling,true,screenSize*scaling,fontSize*scaling);        
+%     [hText{i}, hBoxes{i}] = DrawPage(pageinfo.words(pageinfo.page==pagesToPlot(i)),pageinfo.pos(pageinfo.page==pagesToPlot(i),:)*scaling,true,screenSize*scaling,fontSize*scaling);        
+    [hText{i}, hBoxes{i}] = DrawPage(pageinfo.words(pageinfo.cumulativePage==pagesToPlot(i)),pageinfo.pos(pageinfo.cumulativePage==pagesToPlot(i),:)*scaling,true,screenSize*scaling,fontSize*scaling);        
     colormap jet
     shapes = cell(1,numel(eyesToPlot));
     for j=1:numel(eyesToPlot)
-        switch eyesToPlot{j}
+        switch lower(eyesToPlot{j})
             case 'matched'                
                 fixTime = [data(iFile(i)).events.fixation_matched.time_start, data(iFile(i)).events.fixation_matched.time_end];
                 fixPos = data(iFile(i)).events.fixation_matched.position;    
                 shapes{j} = 'o';
-            case {'left','L'}
+            case {'left','l'}
                 isLeft = upper(data(iFile(i)).events.fixation.eye) == 'L';
                 fixTime = [data(iFile(i)).events.fixation.time_start(isLeft), data(iFile(i)).events.fixation.time_end(isLeft)];
                 fixPos = data(iFile(i)).events.fixation.position(isLeft,:);    
                 shapes{j} = 'd';
-            case {'right','R'}
+            case {'right','r'}
                 isRight = upper(data(iFile(i)).events.fixation.eye) == 'R';
                 fixTime = [data(iFile(i)).events.fixation.time_start(isRight), data(iFile(i)).events.fixation.time_end(isRight)];
                 fixPos = data(iFile(i)).events.fixation.position(isRight,:);    
