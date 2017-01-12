@@ -32,6 +32,7 @@ function [hFig,hText,hBoxes] = PlotPages(data,pagesToPlot,eyesToPlot,figNum,scre
 % Updated 12/17/15 by DJ - allow imageSize that doesn't match original
 % image size
 % Updated 2/1/16 by DJ - added AdjustWordPos call
+% Updated 8/19/16 by DJ - updated PageTag.
 
 if ~exist('figNum','var') || isempty(figNum)
     figNum = 300+(1:numel(pagesToPlot));
@@ -89,11 +90,12 @@ fontSize = 40 * min(imScale);
 scaling = 0.3;
 
 % get pageTag
-if data(1).params.subject<9
-    pageTag = 'DisplayPage';
-else
-    pageTag = 'Display Page';
-end
+pageTag = 'Page';
+% if data(1).params.subject<9
+%     pageTag = 'DisplayPage';
+% else
+%     pageTag = 'Display Page';
+% end
 
 % get info
 iFile = zeros(size(pagesToPlot));

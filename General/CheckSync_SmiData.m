@@ -34,7 +34,7 @@ end
 % Get sync events
 [eye,psy] = GetSyncEvents_SmiData(data,syncEvents);
 
-% Make sure events are the same
+%% Make sure events are the same
 if ~isequal(psy.name,eye.name) || ~isequal(psy.session,eye.session) % number of events that aren't in exactly the right spot
     error('Sync events don''t match up! Make sure file has been fully imported and all sync events were logged properly.');
 else

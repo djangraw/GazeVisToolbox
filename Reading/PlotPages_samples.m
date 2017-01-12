@@ -32,8 +32,10 @@ function [hFig,hText,hBoxes] = PlotPages_samples(data,pagesToPlot,eyesToPlot,fig
 % Updated 11/3/15 by DJ - use samples instead of fixations
 % Updated 12/17/15 by DJ - allow imageSize that doesn't match original
 % image size
-% Updated 2/1/16 by DJ - added AdjustWordPos call
+% Updated 2/1/16 by DJ - added AdjustWordPos call\
+% Updated 8/19/16 by DJ - updated PageTag.
 
+% Declare defaults
 if ~exist('figNum','var') || isempty(figNum)
     figNum = 300+(1:numel(pagesToPlot));
 end
@@ -94,11 +96,12 @@ fontSize = 50 * min(imScale);
 scaling = 0.4;
 
 % get pageTag
-if data(1).params.subject<9
-    pageTag = 'DisplayPage';
-else
-    pageTag = 'Display Page';
-end
+pageTag = 'Page';
+% if data(1).params.subject<9
+%     pageTag = 'DisplayPage';
+% else
+%     pageTag = 'Display Page';
+% end
 
 % get info
 iFile = zeros(size(pagesToPlot));
@@ -106,7 +109,7 @@ iPage = zeros(size(pagesToPlot));
 [tPageStart, tPageEnd, pageNum] = deal(cell(1,numel(data)));
 nPages = zeros(1,numel(data));
 for j=1:numel(data)
-    [tPageStart{j},tPageEnd{j}, pageNum{j}] = GetPageTimes(data(j).events,'DisplayPage');
+    [tPageStart{j},tPageEnd{j}, pageNum{j}] = GetPageTimes(data(j).events,pageTag);
     nPages(j) = numel(pageNum{j});
     [isOnPage, iPageThis] = ismember(pagesToPlot,pageNum{j});
     iFile(isOnPage) = j;

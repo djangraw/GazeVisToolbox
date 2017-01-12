@@ -62,7 +62,16 @@ for i=1:numel(eventsRaw)
     iSessionBoundary = find(diff(tSamples)>10000); % find boundaries
     % split!
     if ~isempty(iSessionBoundary)
-        eventsSplit{i} = SplitSmiEventsStruct(eventsRaw(i),tSamples(iSessionBoundary)+5);        
+        eventsSplit{i} = SplitSmiEventsStruct(eventsRaw(i),tSamples(iSessionBoundary)+5); 
+        % remove empty ones
+        isBad = false(1,numel(eventsSplit));
+        for j=1:numel(eventsSplit{i})
+            if isempty(eventsSplit{i}(j).fixation.time_start)
+                isBad(j) = true;
+            end
+        end
+        eventsSplit{i}(isBad) = [];
+        % duplicate other values
         smiFilenamesSplit{i} = repmat(smiFilenames(i),size(eventsSplit{i}));
         thresholdsSplit{i} = repmat(thresholds_out(i),size(eventsSplit{i}));
         smiParamsSplit{i} = repmat(smiParams(i),size(eventsSplit{i}));

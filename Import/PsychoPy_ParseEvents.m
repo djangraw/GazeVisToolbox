@@ -52,6 +52,7 @@ function datastruct = PsychoPy_ParseEvents(text_file,types,start_code,end_code)
 % Updated 9/10/14 by DJ - added START option.
 % Updated 3/12/15 by DJ - added sequence option, fixed 'other' option
 % Updated 1/19/16 by DJ - added displayset option.
+% Updated 1/12/17 by DJ - generic option saves entire message
 
 if nargin<2 || isempty(types)
     types = {'block','soundset','soundstart','key','display','sequence'};%,'message'};
@@ -79,6 +80,7 @@ fseek(fid,0,'bof'); % rewind to beginning
 % values: the values returned by sscanf (we specify the # of columns here)
 [words,iInfo,formats,values] = deal(cell(size(types)));
 delimiters = {' ','\f','\n','\r','\t','\v','='}; % whitespace, = sign, comma
+showWholeMsg = false(size(types));
 for i=1:numel(types)
     switch types{i}        
         case 'block'
@@ -132,6 +134,7 @@ for i=1:numel(types)
             iInfo{i} = [1 3];
             formats{i} = '%f %s';
             values{i} = zeros(0,2);
+            showWholeMsg(i) = true;
     end
 end
 
@@ -143,7 +146,7 @@ while ftell(fid) < eof % if we haven't reached the end of the text file
     str = fgetl(fid); % read in next line of text file
     % Check for start code
     if ~found_start_code 
-        if isempty(findstr(str,start_code)) % if we haven't found start code yet
+        if isempty(strfind(str,start_code)) % if we haven't found start code yet
             continue; % skip to next line
         else
             found_start_code = true;
@@ -152,28 +155,37 @@ while ftell(fid) < eof % if we haven't reached the end of the text file
     % Otherwise, Read in line
     for i=1:numel(types)
         if strfind(str,words{i}) % check for the code-word indicating a message was written
-            if strcmp(types{i},'displaypos')
-                C = strsplit(str,[delimiters,{':','(',')',','}]);
-            else
+            
+            if showWholeMsg(i)
+                % Don't parse values, just return whole message
                 C = strsplit(str,delimiters);
-            end
-            stuff = C(iInfo{i});
-%             stuff = sscanf(str,formats{i})';
-            if size(stuff,2)==size(values{i},2)
-                values{i} = [values{i}; stuff]; % add the info from this line as an additional row
-            elseif strcmp(types{i},'eyesample')
-                values{i} = [values{i}; NaN,NaN,NaN]; % add a blank sample so the time points still line up           
-            elseif strcmp(types{i},'displayset')
-                iEquals = find(str=='=',1); % text will come just after equals sign
-                values{i} = [values{i}; stuff(1:2), {str(iEquals+3:end-1)}]; % exclude single quotes around text            
-            else
-                warning('FindEvents:IncompleteEvent','Unable to decipher the following event fully:\n %s',str); % sometimes saccades are not logged fully
+                iMsg = strfind(str,C{3});
+                values{i} = [values{i}; C(1),{str(iMsg(1):end)}]; 
+            else            
+                % parse values
+                if strcmp(types{i},'displaypos')
+                    C = strsplit(str,[delimiters,{':','(',')',','}]);
+                else
+                    C = strsplit(str,delimiters);
+                end            
+                stuff = C(iInfo{i});
+    %             stuff = sscanf(str,formats{i})';
+                if size(stuff,2)==size(values{i},2)
+                    values{i} = [values{i}; stuff]; % add the info from this line as an additional row
+                elseif strcmp(types{i},'eyesample')
+                    values{i} = [values{i}; NaN,NaN,NaN]; % add a blank sample so the time points still line up           
+                elseif strcmp(types{i},'displayset')
+                    iEquals = find(str=='=',1); % text will come just after equals sign
+                    values{i} = [values{i}; stuff(1:2), {str(iEquals+3:end-1)}]; % exclude single quotes around text            
+                else
+                    warning('FindEvents:IncompleteEvent','Unable to decipher the following event fully:\n %s',str); % sometimes saccades are not logged fully
+                end
             end
             break;
         end        
     end
     % Check for end code
-    if ~isempty(findstr(str,end_code))
+    if ~isempty(strfind(str,end_code))
         break;
     end
 end
