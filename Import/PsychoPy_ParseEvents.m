@@ -86,7 +86,7 @@ for i=1:numel(types)
         case 'block'
             words{i} = 'Block';
             iInfo{i} = [1 5];
-            formats{i} = '%f %d'; % Message format: EBLINK <eye (R/L)> <blinkstart> <blinkend>
+            formats{i} = '%f %d'; % Message format: <time> EXP 
             values{i} = cell(0,2);
         case 'soundset'
             words{i} = 'sound=';
@@ -155,7 +155,7 @@ while ftell(fid) < eof % if we haven't reached the end of the text file
     % Otherwise, Read in line
     for i=1:numel(types)
         if strfind(str,words{i}) % check for the code-word indicating a message was written
-            
+%             if strcmp(words{i},'trial')
             if showWholeMsg(i)
                 % Don't parse values, just return whole message
                 C = strsplit(str,delimiters);
@@ -167,18 +167,23 @@ while ftell(fid) < eof % if we haven't reached the end of the text file
                     C = strsplit(str,[delimiters,{':','(',')',','}]);
                 else
                     C = strsplit(str,delimiters);
-                end            
-                stuff = C(iInfo{i});
-    %             stuff = sscanf(str,formats{i})';
-                if size(stuff,2)==size(values{i},2)
-                    values{i} = [values{i}; stuff]; % add the info from this line as an additional row
-                elseif strcmp(types{i},'eyesample')
-                    values{i} = [values{i}; NaN,NaN,NaN]; % add a blank sample so the time points still line up           
-                elseif strcmp(types{i},'displayset')
-                    iEquals = find(str=='=',1); % text will come just after equals sign
-                    values{i} = [values{i}; stuff(1:2), {str(iEquals+3:end-1)}]; % exclude single quotes around text            
+                end
+                % check for under-sized set values
+                if numel(C)<iInfo{i}(end)
+                    warning('FindEvents:IncompleteEvent','Unable to decipher the following event fully:\n %s',str); % sometimes sounds are not logged fully                
                 else
-                    warning('FindEvents:IncompleteEvent','Unable to decipher the following event fully:\n %s',str); % sometimes saccades are not logged fully
+                    stuff = C(iInfo{i});
+        %             stuff = sscanf(str,formats{i})';
+                    if size(stuff,2)==size(values{i},2)
+                        values{i} = [values{i}; stuff]; % add the info from this line as an additional row
+                    elseif strcmp(types{i},'eyesample')
+                        values{i} = [values{i}; NaN,NaN,NaN]; % add a blank sample so the time points still line up           
+                    elseif strcmp(types{i},'displayset')
+                        iEquals = find(str=='=',1); % text will come just after equals sign
+                        values{i} = [values{i}; stuff(1:2), {str(iEquals+3:end-1)}]; % exclude single quotes around text            
+                    else
+                        warning('FindEvents:IncompleteEvent','Unable to decipher the following event fully:\n %s',str); % sometimes saccades are not logged fully
+                    end
                 end
             end
             break;
